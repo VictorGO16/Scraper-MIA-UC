@@ -1,160 +1,272 @@
-# UC Catalog Scraper
+# UC Catalog Scraper & Data Extractor
 
-Herramienta para descargar automáticamente todas las páginas del catálogo UC como archivos PDF.
+Herramienta completa para descargar páginas del catálogo UC como PDFs y extraer información estructurada, con especial énfasis en bibliografía académica.
 
 ## 🚀 Características
 
+### 📥 Scraper Web
 - ✅ Extrae automáticamente todos los enlaces del catálogo UC
 - ✅ Convierte páginas web a PDF de alta calidad
 - ✅ Nombres de archivo inteligentes basados en códigos de curso
 - ✅ Manejo robusto de errores y reintentos
-- ✅ Logging detallado y reportes de ejecución
 - ✅ Evita descargas duplicadas
+
+### 📊 Extractor de Datos
+- ✅ Extrae metadatos estructurados de los PDFs
+- ✅ **Enfoque especial en bibliografía** (mínima y complementaria)
+- ✅ Parser inteligente para autores, títulos, años y URLs
+- ✅ Exportación múltiple: JSON, CSV y reportes detallados
+- ✅ Validación y limpieza automática de datos
+
+### 🔧 Características Técnicas
+- ✅ Logging detallado y reportes de ejecución
 - ✅ Configuración centralizada y personalizable
+- ✅ Arquitectura modular y escalable
 
 ## 📁 Estructura del proyecto
 
 ```
 uc-catalog-scraper/
-├── README.md              # Este archivo
-├── requirements.txt       # Dependencias de Python
-├── setup.ps1              # Scripts de instalación
-├── run.ps1                # Scripts de ejecución
+├── README.md                    # Este archivo
+├── requirements.txt             # Dependencias de Python
+├── setup.ps1                    # Script de instalación principal
+├── setup-extraction.ps1         # Setup adicional para extracción
+├── run.ps1                      # Script de ejecución del scraper
+├── demo_extraction.py           # Demo del extractor
+│
 ├── src/
-│   ├── scraper.py        # Código principal
-│   ├── config.py         # Configuraciones
-│   └── utils.py          # Funciones auxiliares
-├── output/               # PDFs generados
-└── logs/                 # Logs de ejecución
+│   ├── scraper.py              # Scraper principal
+│   ├── extract_courses.py      # Extractor principal
+│   ├── config.py               # Configuraciones del scraper
+│   ├── utils.py                # Funciones auxiliares
+│   └── pdf_extractor/          # Módulo de extracción
+│       ├── __init__.py
+│       ├── course_extractor.py # Extractor principal
+│       ├── models.py           # Modelos de datos
+│       ├── parsers.py          # Parsers especializados
+│       └── exporters.py        # Exportadores JSON/CSV
+│
+├── output/                     # PDFs descargados
+├── data/                       # Datos extraídos
+│   ├── extracted/              # Archivos de salida
+│   └── reports/                # Reportes de extracción
+└── logs/                       # Logs de ejecución
 ```
 
 ## 🛠️ Instalación
 
-### Método 1: Usando scripts de instalación (Recomendado)
+### Instalación completa (Recomendado)
 
-**Windows:**
+**1. Setup inicial del scraper:**
 ```powershell
 .\setup.ps1
 ```
 
-### Método 2: Instalación manual
-
-1. **Crear entorno virtual:**
-```bash
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# o
-venv\Scripts\activate.bat  # Windows
+**2. Setup adicional para extracción de datos:**
+```powershell
+.\setup-extraction.ps1
 ```
 
-2. **Instalar dependencias:**
-```bash
+### Instalación manual
+
+**1. Crear entorno virtual:**
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+**2. Instalar dependencias:**
+```powershell
 pip install -r requirements.txt
 playwright install chromium
 ```
 
 ## 🏃‍♂️ Uso
 
-### Ejecución simple
+### 1. Descargar PDFs del catálogo
 
-**Windows:**
 ```powershell
+# Ejecutar scraper
 .\run.ps1
+
+# O manualmente
+python src/scraper.py
 ```
 
-### Ejecución manual
-```bash
-# Activar entorno virtual
-source venv/bin/activate  # Linux/macOS
-# o
-venv\Scripts\activate.bat  # Windows
+### 2. Extraer información de los PDFs
 
-# Ejecutar scraper
-python src/scraper.py
+```powershell
+# Demo con un PDF
+python demo_extraction.py
+
+# Procesar todos los PDFs
+python src/extract_courses.py
+
+# Con logging detallado
+python src/extract_courses.py --debug
+
+# Personalizar directorios
+python src/extract_courses.py --input-dir mi_carpeta --output-dir resultados
+```
+
+## 📊 Datos Extraídos
+
+### 🎯 Información Principal
+- **Metadatos del curso**: código, nombre, créditos, tipo, disciplina
+- **Contenido académico**: descripción, resultados de aprendizaje
+- **Metodología y evaluación**: estrategias y porcentajes
+- **📚 Bibliografía detallada**: mínima y complementaria
+
+### 📈 Formatos de Salida
+
+**JSON Completo** (`cursos_completo_YYYYMMDD_HHMMSS.json`):
+```json
+{
+  "EPG4005": {
+    "metadata": {
+      "codigo": "EPG4005",
+      "nombre": "METODOS BAYESIANOS",
+      "creditos": 5,
+      "disciplina": "ESTADISTICA"
+    },
+    "bibliografia": {
+      "minima": [
+        {
+          "raw_text": "Andrew Gelman, John B. Carlin...",
+          "authors": ["Andrew Gelman", "John B. Carlin"],
+          "title": "Bayesian Data Analysis",
+          "year": 2013,
+          "publisher": "CRC Press"
+        }
+      ]
+    }
+  }
+}
+```
+
+**JSON de Bibliografía** (`bibliografia_YYYYMMDD_HHMMSS.json`):
+```json
+{
+  "EPG4005": {
+    "codigo": "EPG4005",
+    "nombre": "METODOS BAYESIANOS",
+    "bibliografia": {...},
+    "total_entradas": 5
+  }
+}
+```
+
+**CSV de Metadatos** (`metadatos_YYYYMMDD_HHMMSS.csv`):
+```csv
+codigo,nombre,creditos,disciplina,has_bibliography,total_bib_entries
+EPG4005,METODOS BAYESIANOS,5,ESTADISTICA,true,5
+```
+
+**CSV de Bibliografía** (`bibliografia_YYYYMMDD_HHMMSS.csv`):
+```csv
+curso_codigo,tipo_bibliografia,authors,title,year,publisher
+EPG4005,minima,"Andrew Gelman; John B. Carlin",Bayesian Data Analysis,2013,CRC Press
 ```
 
 ## ⚙️ Configuración
 
-Puedes personalizar el comportamiento editando `src/config.py`:
-
+### Configuración del Scraper (`src/config.py`)
 ```python
-# Configuración del scraper
 SCRAPER_CONFIG = {
     "delay_between_requests": 2,  # segundos entre descargas
     "request_timeout": 30,        # timeout de requests
     "max_retries": 3,            # reintentos por página
 }
 
-# Configuración de PDF
 PDF_CONFIG = {
-    "format": "A4",              # tamaño de página
-    "margin": {                  # márgenes
-        "top": "0.75in",
-        "right": "0.75in",
-        "bottom": "0.75in",
-        "left": "0.75in"
-    }
+    "format": "A4",
+    "margin": {"top": "0.75in", "right": "0.75in", "bottom": "0.75in", "left": "0.75in"}
 }
 ```
 
-## 📊 Salida
+### Configuración del Extractor
+```powershell
+# Solo JSON
+python src/extract_courses.py --export-format json
 
-### Archivos generados:
-- **`output/`**: Contiene todos los PDFs descargados
-  - Nombres basados en códigos de curso (ej: `EPG4007.pdf`)
-  - Fallback a hash para páginas sin código
-  
-- **`logs/`**: Contiene logs de ejecución
-  - `scraper.log`: Log detallado de cada ejecución
-  - `ultimo_reporte.txt`: Resumen de la última ejecución
+# Solo CSV  
+python src/extract_courses.py --export-format csv
 
-### Ejemplo de salida:
+# Ambos (default)
+python src/extract_courses.py --export-format both
 ```
-=== REPORTE DE EJECUCIÓN ===
-Descargas exitosas: 45
-Descargas fallidas: 2
-Total de enlaces: 47
-Tasa de éxito: 95.7%
 
-Archivos generados:
-  - EPG4007.pdf (234.5 KB)
-  - EPG4008.pdf (198.2 KB)
-  - EPG4009.pdf (267.8 KB)
-  ...
+## 📈 Casos de Uso
+
+### 🔍 Investigación Bibliográfica
+- **Análisis de tendencias**: Autores y obras más citadas
+- **Mapeo disciplinario**: Bibliografía por área de conocimiento
+- **Evolución temporal**: Cambios en referencias a lo largo del tiempo
+
+### 📊 Análisis Curricular
+- **Distribución de créditos** por facultad y disciplina
+- **Tipos de evaluación** más comunes
+- **Palabras clave** y tendencias temáticas
+- **Carga académica** y balanceo curricular
+
+### 🎯 Búsquedas Inteligentes
+```python
+# Ejemplos de consultas posibles con los datos extraídos
+"Cursos de 5 créditos con laboratorio"
+"Bibliografía de IA y Machine Learning"
+"Cursos sin prerrequisitos por facultad"
+"Evolución de metodologías de evaluación"
 ```
 
 ## 🔧 Solución de problemas
 
-### Error: "Playwright no está instalado"
-```bash
-pip install playwright
-playwright install chromium
+### Problemas del Scraper
+- **"Playwright no está instalado"**: `pip install playwright && playwright install chromium`
+- **"No se encontraron enlaces"**: Verificar conexión y estructura de la página UC
+- **PDFs vacíos**: Aumentar `wait_for_load` en config.py
+
+### Problemas del Extractor
+- **"Error importando módulos"**: Ejecutar `setup-extraction.ps1`
+- **"No se encontraron PDFs"**: Asegurar que `/output` contiene PDFs
+- **"Bibliografía incompleta"**: El parser maneja variaciones de formato automáticamente
+
+### Problemas de Rendimiento
+- **Memoria**: El procesamiento es secuencial para optimizar uso de memoria
+- **Velocidad**: Ajustar `delay_between_requests` según capacidad del servidor UC
+
+## 📊 Ejemplo de Resultados
+
 ```
+=== RESULTADOS DE EXTRACCIÓN ===
+Archivos procesados: 47
+Extracciones exitosas: 45
+Tasa de éxito: 95.7%
+Cursos con bibliografía: 42
+Cobertura bibliográfica: 89.4%
+Total entradas bibliográficas: 312
 
-### Error: "No se encontraron enlaces"
-- Verifica tu conexión a internet
-- La página de la UC podría haber cambiado su estructura
-- Revisa los logs en `logs/scraper.log`
-
-### PDFs vacíos o incorrectos
-- Algunas páginas pueden requerir JavaScript para cargar
-- El scraper espera 3 segundos adicionales, pero puedes aumentar `wait_for_load` en config.py
-
-### Problemas de memoria
-- Si tienes muchas páginas, el scraper procesa una por vez para evitar problemas de memoria
-- Puedes ajustar `delay_between_requests` para reducir la carga
+Top 5 cursos con más bibliografía:
+  1. EPG4005 - METODOS BAYESIANOS: 8 entradas
+  2. FIL2000 - ETICA APLICADA A INTELIGENCIA ARTIFICIAL: 7 entradas
+  3. IMT3870 - COMPUTACION DE ALTO RENDIMIENTO: 6 entradas
+```
 
 ## 🤝 Contribución
 
 1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
+2. Crea una rama para tu feature (`git checkout -b feature/DataExtraction`)
+3. Commit tus cambios (`git commit -m 'Add PDF data extraction'`)
+4. Push a la rama (`git push origin feature/DataExtraction`)
 5. Abre un Pull Request
 
-## 📝 Notas
+## 📝 Notas Técnicas
 
-- El scraper respeta los servidores de la UC con pausas entre requests
-- Los archivos existentes no se re-descargan (evita duplicados)
-- Todas las URLs se validan antes de procesarse
-- El proyecto usa logging profesional para debugging
+### Scraper
+- Respeta servidores UC con pausas entre requests
+- Evita descargas duplicadas automáticamente
+- Usa Playwright para renderizado completo de JavaScript
+
+### Extractor
+- Parser robusto para formatos variados de bibliografía
+- Validación automática de datos extraídos
+- Manejo inteligente de caracteres especiales y encoding
