@@ -1,0 +1,29 @@
+# Entorno virtual
+venv/
+.venv/
+env/
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/*.log
+
+# Output files (opcional - puedes querer versionar algunos PDFs)
+output/*.pdf
+output/*.html
+
+# OS
+.DS_Store
+Thumbs.db
