@@ -1,12 +1,15 @@
 """
-Parsers especializados para diferentes secciones de los PDFs UC
+Parsers especializados para diferentes secciones de los PDFs UC - VERSIÓN COMPLETA
 """
 
 import re
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import logging
 
-from .models import CourseMetadata, Bibliography, BibliographyEntry
+from .models import (
+    CourseMetadata, Bibliography, BibliographyEntry, ContenidoItem,
+    Evaluacion, InformacionInstitucional
+)
 
 
 class MetadataParser:
@@ -72,6 +75,284 @@ class MetadataParser:
         return metadata
 
 
+class ContentParser:
+    """Parser expandido para contenido descriptivo y estructurado del curso"""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def extract_descripcion(self, text: str) -> Optional[str]:
+        """
+        Extrae la descripción del curso
+
+        Args:
+            text: Texto completo del PDF
+
+        Returns:
+            str: Descripción del curso o None
+        """
+        # Buscar sección "I.DESCRIPCIÓN DEL CURSO"
+        desc_match = re.search(
+            r'I\s*\.\s*DESCRIPCI[OÓ]N\s+DEL\s+CURSO\s*\n(.*?)(?=II\s*\.\s*RESULTADOS|$)',
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+
+        if desc_match:
+            descripcion = desc_match.group(1).strip()
+            # Limpiar texto
+            descripcion = re.sub(r'\n+', ' ', descripcion)  # Múltiples líneas -> espacio
+            descripcion = re.sub(r'\s+', ' ', descripcion)  # Múltiples espacios -> un espacio
+            return descripcion
+
+        return None
+
+    def extract_resultados_aprendizaje(self, text: str) -> List[str]:
+        """
+        Extrae resultados de aprendizaje estructurados
+
+        Args:
+            text: Texto completo del PDF
+
+        Returns:
+            List[str]: Lista de resultados de aprendizaje
+        """
+        resultados = []
+
+        # Buscar sección "II.RESULTADOS DE APRENDIZAJE"
+        section_match = re.search(
+            r'II\s*\.\s*RESULTADOS\s+DE\s+APRENDIZAJE\s*\n(.*?)(?=III\s*\.\s*CONTENIDOS|$)',
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+
+        if section_match:
+            section_text = section_match.group(1).strip()
+
+            # Buscar elementos numerados (1., 2., 3., etc.)
+            pattern = r'^(\d+)\s*\.\s*([^\n]+(?:\n(?!\d+\s*\.)[^\n]*)*)'
+            matches = re.findall(pattern, section_text, re.MULTILINE)
+
+            for num, content in matches:
+                # Limpiar contenido
+                content = re.sub(r'\s+', ' ', content.strip())
+                if content:
+                    resultados.append(f"{num}.{content}")
+
+        return resultados
+
+    def extract_contenidos(self, text: str) -> Dict[str, ContenidoItem]:
+        """
+        Extrae contenidos estructurados con jerarquía
+
+        Args:
+            text: Texto completo del PDF
+
+        Returns:
+            Dict[str, ContenidoItem]: Contenidos organizados jerárquicamente
+        """
+        contenidos = {}
+
+        # Buscar sección "III.CONTENIDOS"
+        section_match = re.search(
+            r'III\s*\.\s*CONTENIDOS\s*\n(.*?)(?=IV\s*\.\s*ESTRATEGIAS|$)',
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+
+        if not section_match:
+            return contenidos
+
+        section_text = section_match.group(1).strip()
+
+        # Patrones para diferentes niveles de numeración
+        patterns = [
+            r'^(\d+)\s*\.\s*([^\n]+)',  # 1. Título principal
+            r'^(\d+\.\d+)\s*\.\s*([^\n]+)',  # 1.1. Subtítulo
+            r'^(\d+\.\d+\.\d+)\s*\.\s*([^\n]+)',  # 1.1.1. Sub-subtítulo
+        ]
+
+        lines = section_text.split('\n')
+        current_main = None
+        current_sub = None
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            # Verificar cada patrón
+            for pattern in patterns:
+                match = re.match(pattern, line)
+                if match:
+                    numero = match.group(1)
+                    titulo = match.group(2).strip()
+
+                    # Determinar nivel jerárquico
+                    parts = numero.split('.')
+
+                    if len(parts) == 1:  # Nivel principal (1., 2., etc.)
+                        item = ContenidoItem(numero=numero, titulo=titulo)
+                        contenidos[numero] = item
+                        current_main = numero
+                        current_sub = None
+
+                    elif len(parts) == 2 and current_main:  # Nivel 2 (1.1., 1.2., etc.)
+                        main_num = parts[0]
+                        if main_num in contenidos:
+                            item = ContenidoItem(numero=numero, titulo=titulo)
+                            contenidos[main_num].subsecciones[numero] = item
+                            current_sub = numero
+
+                    elif len(parts) == 3 and current_main and current_sub:  # Nivel 3 (1.1.1., etc.)
+                        main_num = parts[0]
+                        sub_num = f"{parts[0]}.{parts[1]}"
+                        if (main_num in contenidos and
+                            sub_num in contenidos[main_num].subsecciones):
+                            item = ContenidoItem(numero=numero, titulo=titulo)
+                            contenidos[main_num].subsecciones[sub_num].subsecciones[numero] = item
+
+                    break  # Solo un patrón por línea
+
+        return contenidos
+
+    def extract_metodologias(self, text: str) -> List[str]:
+        """
+        Extrae estrategias metodológicas
+
+        Args:
+            text: Texto completo del PDF
+
+        Returns:
+            List[str]: Lista de metodologías
+        """
+        metodologias = []
+
+        # Buscar sección "IV.ESTRATEGIAS METODOLÓGICAS"
+        section_match = re.search(
+            r'IV\s*\.\s*ESTRATEGIAS\s+METODOL[OÓ]GICAS\s*\n(.*?)(?=V\s*\.\s*ESTRATEGIAS|$)',
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+
+        if section_match:
+            section_text = section_match.group(1).strip()
+
+            # Buscar elementos con guiones o viñetas
+            lines = section_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                # Remover guiones, asteriscos, viñetas al inicio
+                cleaned_line = re.sub(r'^[-•*]\s*', '', line)
+                if cleaned_line and len(cleaned_line) > 3:
+                    metodologias.append(cleaned_line)
+
+        return metodologias
+
+    def extract_evaluacion(self, text: str) -> Evaluacion:
+        """
+        Extrae información de evaluación con porcentajes
+
+        Args:
+            text: Texto completo del PDF
+
+        Returns:
+            Evaluacion: Información de evaluación estructurada
+        """
+        evaluacion = Evaluacion()
+
+        # Buscar sección "V.ESTRATEGIAS EVALUATIVAS"
+        section_match = re.search(
+            r'V\s*\.\s*ESTRATEGIAS\s+EVALUATIVAS\s*\n(.*?)(?=VI\s*\.\s*BIBLIOGRAF|$)',
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+
+        if section_match:
+            section_text = section_match.group(1).strip()
+
+            # Patrones para extraer evaluaciones con porcentajes
+            patterns = [
+                r'-\s*([^:]+):\s*(\d+)%',  # -Controles: 30%
+                r'•\s*([^:]+):\s*(\d+)%',  # •Controles: 30%
+                r'^([^:]+):\s*(\d+)%',     # Controles: 30%
+            ]
+
+            for pattern in patterns:
+                matches = re.findall(pattern, section_text, re.MULTILINE)
+                for nombre, porcentaje in matches:
+                    nombre_limpio = nombre.strip()
+                    try:
+                        porcentaje_num = float(porcentaje)
+                        evaluacion.items[nombre_limpio] = porcentaje_num
+                    except ValueError:
+                        self.logger.warning(f"No se pudo convertir porcentaje: {porcentaje}")
+
+            # Verificar total
+            evaluacion.verificar_total()
+
+        return evaluacion
+
+
+class InstitutionalParser:
+    """Parser para información institucional"""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def extract_informacion_institucional(self, text: str) -> InformacionInstitucional:
+        """
+        Extrae información institucional del final del documento
+
+        Args:
+            text: Texto completo del PDF
+
+        Returns:
+            InformacionInstitucional: Información institucional
+        """
+        info = InformacionInstitucional()
+
+        # Buscar la sección institucional (generalmente al final)
+        institutional_match = re.search(
+            r'(PONTIFICIA\s+UNIVERSIDAD\s+CATOLICA\s+DE\s+CHILE.*?)$',
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+
+        if institutional_match:
+            institutional_text = institutional_match.group(1)
+
+            # Universidad
+            if 'PONTIFICIA UNIVERSIDAD CATOLICA DE CHILE' in institutional_text.upper():
+                info.universidad = "PONTIFICIA UNIVERSIDAD CATOLICA DE CHILE"
+
+            # Facultad
+            facultad_match = re.search(r'FACULTAD\s+DE\s+([^\n/]+)', institutional_text, re.IGNORECASE)
+            if facultad_match:
+                info.facultad = facultad_match.group(1).strip()
+
+            # Escuela
+            escuela_match = re.search(r'ESCUELA\s+DE\s+([^\n/]+)', institutional_text, re.IGNORECASE)
+            if escuela_match:
+                info.escuela = escuela_match.group(1).strip()
+
+            # Instituto
+            instituto_match = re.search(r'INSTITUTO\s+DE\s+([^\n/]+)', institutional_text, re.IGNORECASE)
+            if instituto_match:
+                info.instituto = instituto_match.group(1).strip()
+
+            # Fecha
+            fecha_match = re.search(r'([A-Z]+)\s+(\d{4})', institutional_text)
+            if fecha_match:
+                mes = fecha_match.group(1)
+                año = int(fecha_match.group(2))
+                info.mes = mes
+                info.año = año
+                info.fecha = f"{mes} {año}"
+
+        return info
+
+
 class BibliographyParser:
     """Parser especializado para bibliografía"""
 
@@ -133,7 +414,7 @@ class BibliographyParser:
 
         return bib_text.strip()
 
-    def _split_bibliography_types(self, bib_text: str) -> tuple[Optional[str], Optional[str]]:
+    def _split_bibliography_types(self, bib_text: str) -> Tuple[Optional[str], Optional[str]]:
         """Separa bibliografía mínima y complementaria"""
         minima_text = None
         complementaria_text = None
@@ -259,36 +540,3 @@ class BibliographyParser:
             self.logger.warning(f"Error parseando entrada bibliográfica: {e}")
 
         return entry
-
-
-class ContentParser:
-    """Parser para contenido descriptivo del curso"""
-
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
-
-    def extract_descripcion(self, text: str) -> Optional[str]:
-        """
-        Extrae la descripción del curso
-
-        Args:
-            text: Texto completo del PDF
-
-        Returns:
-            str: Descripción del curso o None
-        """
-        # Buscar sección "I.DESCRIPCIÓN DEL CURSO"
-        desc_match = re.search(
-            r'I\s*\.\s*DESCRIPCI[OÓ]N\s+DEL\s+CURSO\s*\n(.*?)(?=II\s*\.\s*RESULTADOS|$)',
-            text,
-            re.IGNORECASE | re.DOTALL
-        )
-
-        if desc_match:
-            descripcion = desc_match.group(1).strip()
-            # Limpiar texto
-            descripcion = re.sub(r'\n+', ' ', descripcion)  # Múltiples líneas -> espacio
-            descripcion = re.sub(r'\s+', ' ', descripcion)  # Múltiples espacios -> un espacio
-            return descripcion
-
-        return None

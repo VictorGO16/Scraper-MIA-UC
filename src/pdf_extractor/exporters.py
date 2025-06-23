@@ -94,8 +94,8 @@ class JSONExporter:
                     bibliography_summary[key] = {
                         "nombre": course.nombre,
                         "codigo": course.codigo,
-                        "bibliografia": course.bibliography.to_dict(),
-                        "total_entradas": course.bibliography.total_entries
+                        "bibliografia": course.bibliografia.to_dict(),  # Corregido: bibliografia en lugar de bibliography
+                        "total_entradas": course.bibliografia.total_entries
                     }
 
             with open(output_path, 'w', encoding='utf-8') as f:
@@ -154,7 +154,7 @@ class CSVExporter:
                         course.filename,
                         course.extraction_success,
                         course.has_bibliography,
-                        course.bibliography.total_entries
+                        course.bibliografia.total_entries  # Corregido: bibliografia en lugar de bibliography
                     ])
 
             self.logger.info(f"Metadatos exportados a CSV: {output_path}")
@@ -189,7 +189,7 @@ class CSVExporter:
                         continue
 
                     # Bibliografía mínima
-                    for entry in course.bibliography.minima:
+                    for entry in course.bibliografia.minima:  # Corregido: bibliografia en lugar de bibliography
                         writer.writerow([
                             course.codigo or '',
                             course.nombre or '',
@@ -203,7 +203,7 @@ class CSVExporter:
                         ])
 
                     # Bibliografía complementaria
-                    for entry in course.bibliography.complementaria:
+                    for entry in course.bibliografia.complementaria:  # Corregido: bibliografia en lugar de bibliography
                         writer.writerow([
                             course.codigo or '',
                             course.nombre or '',
@@ -256,9 +256,9 @@ class ReportExporter:
                     {
                         "codigo": course.codigo,
                         "nombre": course.nombre,
-                        "entradas_minima": len(course.bibliography.minima),
-                        "entradas_complementaria": len(course.bibliography.complementaria),
-                        "total": course.bibliography.total_entries
+                        "entradas_minima": len(course.bibliografia.minima),
+                        "entradas_complementaria": len(course.bibliografia.complementaria),
+                        "total": course.bibliografia.total_entries
                     }
                     for course in courses if course.has_bibliography
                 ]

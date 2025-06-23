@@ -1,5 +1,5 @@
 """
-Extractor principal para cursos UC
+Extractor principal para cursos UC - VERSIÓN COMPLETA
 """
 
 import re
@@ -10,12 +10,12 @@ from typing import List, Optional, Dict, Any
 import pdfplumber
 
 from .models import Course, CourseMetadata, Bibliography, BibliographyEntry
-from .parsers import MetadataParser, BibliographyParser, ContentParser
+from .parsers import MetadataParser, BibliographyParser, ContentParser, InstitutionalParser
 
 
 class CourseExtractor:
     """
-    Extractor principal para información de cursos UC desde PDFs
+    Extractor principal para información completa de cursos UC desde PDFs
     """
 
     def __init__(self, debug: bool = False):
@@ -26,19 +26,20 @@ class CourseExtractor:
         self.metadata_parser = MetadataParser()
         self.bibliography_parser = BibliographyParser()
         self.content_parser = ContentParser()
+        self.institutional_parser = InstitutionalParser()
 
         if debug:
             logging.basicConfig(level=logging.DEBUG)
 
     def extract_from_file(self, pdf_path: Path) -> Course:
         """
-        Extrae información de un archivo PDF
+        Extrae información completa de un archivo PDF
 
         Args:
             pdf_path: Ruta al archivo PDF
 
         Returns:
-            Course: Objeto con la información extraída
+            Course: Objeto con toda la información extraída
         """
         course = Course(filename=pdf_path.name)
 
@@ -50,13 +51,36 @@ class CourseExtractor:
                 return course
 
             # Extraer información usando parsers especializados
+            self.logger.info(f"Extrayendo metadatos de {pdf_path.name}")
             course.metadata = self.metadata_parser.parse(text)
+
+            self.logger.info(f"Extrayendo descripción de {pdf_path.name}")
             course.descripcion = self.content_parser.extract_descripcion(text)
-            course.bibliography = self.bibliography_parser.parse(text)
+
+            self.logger.info(f"Extrayendo resultados de aprendizaje de {pdf_path.name}")
+            course.resultados_aprendizaje = self.content_parser.extract_resultados_aprendizaje(text)
+
+            self.logger.info(f"Extrayendo contenidos de {pdf_path.name}")
+            course.contenidos = self.content_parser.extract_contenidos(text)
+
+            self.logger.info(f"Extrayendo metodologías de {pdf_path.name}")
+            course.metodologias = self.content_parser.extract_metodologias(text)
+
+            self.logger.info(f"Extrayendo evaluación de {pdf_path.name}")
+            course.evaluacion = self.content_parser.extract_evaluacion(text)
+
+            self.logger.info(f"Extrayendo bibliografía de {pdf_path.name}")
+            course.bibliografia = self.bibliography_parser.parse(text)
+
+            self.logger.info(f"Extrayendo información institucional de {pdf_path.name}")
+            course.informacion_institucional = self.institutional_parser.extract_informacion_institucional(text)
 
             # Logging para debugging
             if self.debug:
-                self.logger.debug(f"Procesado: {course.get_summary()}")
+                summary = course.get_summary()
+                content_stats = course.get_content_stats()
+                self.logger.debug(f"Procesado: {summary}")
+                self.logger.debug(f"Estadísticas de contenido: {content_stats}")
 
         except Exception as e:
             error_msg = f"Error procesando {pdf_path.name}: {str(e)}"
@@ -86,14 +110,18 @@ class CourseExtractor:
             course = self.extract_from_file(pdf_file)
             courses.append(course)
 
-        # Estadísticas de procesamiento
+        # Estadísticas de procesamiento completas
         successful = sum(1 for c in courses if c.extraction_success)
         with_bibliography = sum(1 for c in courses if c.has_bibliography)
+        with_complete_eval = sum(1 for c in courses if c.has_complete_evaluation)
+        with_structured_content = sum(1 for c in courses if c.has_structured_content)
 
         self.logger.info(f"Procesamiento completado:")
         self.logger.info(f"  - Archivos procesados: {len(courses)}")
         self.logger.info(f"  - Extracciones exitosas: {successful}")
         self.logger.info(f"  - Cursos con bibliografía: {with_bibliography}")
+        self.logger.info(f"  - Cursos con evaluación completa: {with_complete_eval}")
+        self.logger.info(f"  - Cursos con contenidos estructurados: {with_structured_content}")
 
         return courses
 
@@ -152,18 +180,24 @@ class CourseExtractor:
 
     def get_extraction_report(self, courses: List[Course]) -> Dict[str, Any]:
         """
-        Genera un reporte de extracción
+        Genera un reporte de extracción completo
 
         Args:
             courses: Lista de cursos extraídos
 
         Returns:
-            Dict: Reporte con estadísticas
+            Dict: Reporte con estadísticas detalladas
         """
         total = len(courses)
         successful = sum(1 for c in courses if c.extraction_success)
         with_bibliography = sum(1 for c in courses if c.has_bibliography)
-        total_bib_entries = sum(c.bibliography.total_entries for c in courses)
+        with_complete_eval = sum(1 for c in courses if c.has_complete_evaluation)
+        with_structured_content = sum(1 for c in courses if c.has_structured_content)
+
+        total_bib_entries = sum(c.bibliografia.total_entries for c in courses)
+        total_contenidos = sum(len(c.contenidos) for c in courses)
+        total_resultados = sum(len(c.resultados_aprendizaje) for c in courses)
+        total_metodologias = sum(len(c.metodologias) for c in courses)
 
         # Errores más comunes
         all_errors = []
@@ -174,13 +208,38 @@ class CourseExtractor:
         for error in all_errors:
             error_counts[error] = error_counts.get(error, 0) + 1
 
+        # Estadísticas por facultad/escuela
+        facultades = {}
+        for course in courses:
+            facultad = course.informacion_institucional.facultad or course.informacion_institucional.escuela or "Sin clasificar"
+            if facultad not in facultades:
+                facultades[facultad] = 0
+            facultades[facultad] += 1
+
         return {
-            "total_files": total,
-            "successful_extractions": successful,
-            "success_rate": (successful / total * 100) if total > 0 else 0,
-            "courses_with_bibliography": with_bibliography,
-            "bibliography_coverage": (with_bibliography / total * 100) if total > 0 else 0,
-            "total_bibliography_entries": total_bib_entries,
-            "avg_entries_per_course": (total_bib_entries / with_bibliography) if with_bibliography > 0 else 0,
+            "resumen_general": {
+                "total_files": total,
+                "successful_extractions": successful,
+                "success_rate": (successful / total * 100) if total > 0 else 0,
+            },
+            "cobertura_contenido": {
+                "courses_with_bibliography": with_bibliography,
+                "bibliography_coverage": (with_bibliography / total * 100) if total > 0 else 0,
+                "courses_with_complete_evaluation": with_complete_eval,
+                "evaluation_coverage": (with_complete_eval / total * 100) if total > 0 else 0,
+                "courses_with_structured_content": with_structured_content,
+                "structured_content_coverage": (with_structured_content / total * 100) if total > 0 else 0,
+            },
+            "estadisticas_contenido": {
+                "total_bibliography_entries": total_bib_entries,
+                "avg_entries_per_course": (total_bib_entries / with_bibliography) if with_bibliography > 0 else 0,
+                "total_contenidos": total_contenidos,
+                "avg_contenidos_per_course": (total_contenidos / total) if total > 0 else 0,
+                "total_resultados_aprendizaje": total_resultados,
+                "avg_resultados_per_course": (total_resultados / total) if total > 0 else 0,
+                "total_metodologias": total_metodologias,
+                "avg_metodologias_per_course": (total_metodologias / total) if total > 0 else 0,
+            },
+            "distribucion_facultades": facultades,
             "common_errors": dict(sorted(error_counts.items(), key=lambda x: x[1], reverse=True)[:5])
         }

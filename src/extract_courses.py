@@ -102,14 +102,25 @@ def main():
         # Generar reporte de extracción
         extraction_report = extractor.get_extraction_report(courses)
 
-        # Logging de resultados
+        # Logging de resultados (compatible con nueva estructura)
         logger.info("=== RESULTADOS DE EXTRACCIÓN ===")
-        logger.info(f"Archivos procesados: {extraction_report['total_files']}")
-        logger.info(f"Extracciones exitosas: {extraction_report['successful_extractions']}")
-        logger.info(f"Tasa de éxito: {extraction_report['success_rate']:.1f}%")
-        logger.info(f"Cursos con bibliografía: {extraction_report['courses_with_bibliography']}")
-        logger.info(f"Cobertura bibliográfica: {extraction_report['bibliography_coverage']:.1f}%")
-        logger.info(f"Total entradas bibliográficas: {extraction_report['total_bibliography_entries']}")
+        logger.info(f"Archivos procesados: {extraction_report['resumen_general']['total_files']}")
+        logger.info(f"Extracciones exitosas: {extraction_report['resumen_general']['successful_extractions']}")
+        logger.info(f"Tasa de éxito: {extraction_report['resumen_general']['success_rate']:.1f}%")
+        logger.info(f"Cursos con bibliografía: {extraction_report['cobertura_contenido']['courses_with_bibliography']}")
+        logger.info(
+            f"Cobertura bibliográfica: {extraction_report['cobertura_contenido']['bibliography_coverage']:.1f}%")
+        logger.info(
+            f"Cursos con evaluación completa: {extraction_report['cobertura_contenido']['courses_with_complete_evaluation']}")
+        logger.info(
+            f"Cursos con contenidos estructurados: {extraction_report['cobertura_contenido']['courses_with_structured_content']}")
+        logger.info(
+            f"Total entradas bibliográficas: {extraction_report['estadisticas_contenido']['total_bibliography_entries']}")
+
+        # Mostrar distribución por facultades
+        logger.info("\n=== DISTRIBUCIÓN POR FACULTADES ===")
+        for facultad, count in extraction_report['distribucion_facultades'].items():
+            logger.info(f"  {facultad}: {count} cursos")
 
         # Exportar resultados
         logger.info("Exportando resultados...")
@@ -149,10 +160,18 @@ def main():
         # Mostrar cursos con más bibliografía (top 5)
         courses_with_bib = [c for c in courses if c.has_bibliography]
         if courses_with_bib:
-            top_courses = sorted(courses_with_bib, key=lambda c: c.bibliography.total_entries, reverse=True)[:5]
+            top_courses = sorted(courses_with_bib, key=lambda c: c.bibliografia.total_entries, reverse=True)[:5]
             logger.info("\nTop 5 cursos con más bibliografía:")
             for i, course in enumerate(top_courses, 1):
-                logger.info(f"  {i}. {course.codigo} - {course.nombre}: {course.bibliography.total_entries} entradas")
+                logger.info(f"  {i}. {course.codigo} - {course.nombre}: {course.bibliografia.total_entries} entradas")
+
+        # Mostrar cursos con contenidos más estructurados
+        courses_with_content = [c for c in courses if c.has_structured_content]
+        if courses_with_content:
+            top_content = sorted(courses_with_content, key=lambda c: len(c.contenidos), reverse=True)[:5]
+            logger.info("\nTop 5 cursos con más contenidos estructurados:")
+            for i, course in enumerate(top_content, 1):
+                logger.info(f"  {i}. {course.codigo} - {course.nombre}: {len(course.contenidos)} secciones")
 
         return 0
 
