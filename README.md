@@ -18,8 +18,8 @@ Herramienta para descargar automáticamente todas las páginas del catálogo UC 
 uc-catalog-scraper/
 ├── README.md              # Este archivo
 ├── requirements.txt       # Dependencias de Python
-├── setup.sh / setup.bat   # Scripts de instalación
-├── run.sh / run.bat       # Scripts de ejecución
+├── setup.ps1              # Scripts de instalación
+├── run.ps1                # Scripts de ejecución
 ├── src/
 │   ├── scraper.py        # Código principal
 │   ├── config.py         # Configuraciones
@@ -32,15 +32,9 @@ uc-catalog-scraper/
 
 ### Método 1: Usando scripts de instalación (Recomendado)
 
-**Linux/macOS:**
-```bash
-chmod +x setup.sh run.sh
-./setup.sh
-```
-
 **Windows:**
-```cmd
-setup.bat
+```powershell
+.\setup.ps1
 ```
 
 ### Método 2: Instalación manual
@@ -62,14 +56,10 @@ playwright install chromium
 ## 🏃‍♂️ Uso
 
 ### Ejecución simple
-**Linux/macOS:**
-```bash
-./run.sh
-```
 
 **Windows:**
-```cmd
-run.bat
+```powershell
+.\run.ps1
 ```
 
 ### Ejecución manual
@@ -168,11 +158,3 @@ playwright install chromium
 - Los archivos existentes no se re-descargan (evita duplicados)
 - Todas las URLs se validan antes de procesarse
 - El proyecto usa logging profesional para debugging
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
-
----
-
-**Desarrollado con ❤️ para la comunidad UC**
