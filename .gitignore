@@ -1,0 +1,137 @@
+# UC Catalog Scraper - .gitignore
+
+# ============================================================================
+# Python
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ============================================================================
+# Entornos virtuales
+# ============================================================================
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ============================================================================
+# IDEs
+# ============================================================================
+# PyCharm
+.idea/
+*.swp
+*.swo
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# Sistema operativo
+# ============================================================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Linux
+*~
+.nfs*
+
+# ============================================================================
+# Logs del proyecto
+# ============================================================================
+logs/*.log
+logs/*.txt
+!logs/.gitkeep
+
+# ============================================================================
+# Archivos de salida (PDFs)
+# ============================================================================
+# Opción A: Ignorar todos los PDFs (recomendado para desarrollo)
+output/*.pdf
+output/*.html
+!output/.gitkeep
+
+# Opción B: Si quieres versionar algunos PDFs de ejemplo, comenta la línea anterior
+# y descomenta estas:
+# output/ejemplo_*.pdf
+# output/muestra_*.pdf
+
+# ============================================================================
+# Archivos temporales del scraper
+# ============================================================================
+*.tmp
+*.temp
+temp/
+tmp/
+
+# ============================================================================
+# Configuraciones locales
+# ============================================================================
+config_local.py
+.env.local
+secrets.py
+
+# ============================================================================
+# Playwright
+# ============================================================================
+# Navegadores descargados por Playwright (muy pesados)
+# playwright puede reinstalarlos automáticamente
+ms-playwright/
+
+# ============================================================================
+# Testing
+# ============================================================================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ============================================================================
+# Jupyter Notebooks (si usas notebooks para análisis)
+# ============================================================================
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================================================
+# Archivos de backup
+# ============================================================================
+*.bak
+*.backup
+*.orig
